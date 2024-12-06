@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: blindspot
+Version: 0.0.1
+Summary: blind pixels lib
+Author-email: Charles <charles.shht@gmail.com>
+Requires-Python: >=3.7
+License-File: LICENSE
