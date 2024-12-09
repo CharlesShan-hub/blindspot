@@ -5,19 +5,18 @@ from pathlib import Path
 import csv
 import matplotlib.pyplot as plt
 from PIL import Image, ImageTk
-import blindspot as bs
+import numpy as np
 from clib.utils import to_numpy, to_image
 from clib.metrics.fusion import fused
-import numpy as np
+import blindspot as bs
 
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 820
 CONFIG_WIDTH = 10
 TITLE_FONT = ("Arial", 24)
 CONTENT_FONT = ("Arial", 15)
-BASE_SRC_DEFAULT = Path('/Users/kimshan/Public/data/test')
-DATA_CSV_DEFAULT = Path('/Users/kimshan/Public/data/mang_yuan2/pathinfo.csv')
-TEMP_IMG = bs.read_txt_to_matrix('/Users/kimshan/Public/data/test/非正式测试结果/Test-Result/2024-03-13-14-10-12-0313/像元噪声均值_V.txt')
+BASE_SRC_DEFAULT = Path('/Users/kimshan/Public/data/mang_yuan2')
+# TEMP_IMG = read_txt_to_matrix('/Users/kimshan/Public/data/test/非正式测试结果/Test-Result/2024-03-13-14-10-12-0313/像元噪声均值_V.txt')
 TEMP_IMG = fused
 
 class App:
@@ -50,27 +49,16 @@ class App:
 
         # Base Path Config
         self.base_src = BASE_SRC_DEFAULT
+        bs.BASE_PATH = self.base_src
         self.base_src_frame = tk.Frame(self.top_frame)
         self.base_src_label = tk.Label(self.base_src_frame, width=CONFIG_WIDTH, text='Base Src', font=CONTENT_FONT)
         self.base_src_entry = tk.Entry(self.base_src_frame, font=CONTENT_FONT)
         self.base_src_entry.insert(0,self.base_src)
         self.base_src_button = tk.Button(self.base_src_frame, text="Choose", command=self.select_base_directory, font=CONTENT_FONT)
-        self.base_src_frame.pack(side=tk.TOP,fill=tk.X)
-        self.base_src_label.pack(side=tk.LEFT,padx=10)
-        self.base_src_entry.pack(side=tk.LEFT,fill=tk.X,expand=True)
+        self.base_src_frame.pack(side=tk.TOP, fill=tk.X)
+        self.base_src_label.pack(side=tk.LEFT, padx=10)
+        self.base_src_entry.pack(side=tk.LEFT, fill=tk.X,expand=True)
         self.base_src_button.pack(side=tk.LEFT)
-
-        # config file path
-        self.csv_src = DATA_CSV_DEFAULT
-        self.csv_src_frame = tk.Frame(self.top_frame)
-        self.csv_src_label = tk.Label(self.csv_src_frame, width=CONFIG_WIDTH, text='CSV Src', font=CONTENT_FONT)
-        self.csv_src_entry = tk.Entry(self.csv_src_frame, font=CONTENT_FONT)
-        self.csv_src_entry.insert(0,self.csv_src)
-        self.csv_src_button = tk.Button(self.csv_src_frame, text="Choose", command=self.select_csv_directory, font=CONTENT_FONT)
-        self.csv_src_frame.pack(side=tk.TOP,fill=tk.X)
-        self.csv_src_label.pack(side=tk.LEFT,padx=10)
-        self.csv_src_entry.pack(side=tk.LEFT,fill=tk.X,expand=True)
-        self.csv_src_button.pack(side=tk.LEFT)
 
         # Proj chooser
         self.proj_list = self.init_proj_conf_list()
@@ -120,7 +108,7 @@ class App:
         self.canvas_res = tk.Canvas(self.res_frame, width=700, height=650, bg='#fff')
         self.res_image = ImageTk.PhotoImage(to_image(TEMP_IMG))
         self.canvas_res.create_image(0, 0, anchor=tk.NW, image=self.res_image)
-        self.canvas_res.pack(side=tk.LEFT)#, expand=True)
+        self.canvas_res.pack(side=tk.LEFT)
     
     def zoom_in_image(self):
         self.zoom_factor = self.zoom_factor * 2  # 假设放大倍数为2
@@ -132,7 +120,6 @@ class App:
         self.canvas.config(scrollregion=(0,0,self.noice.shape[1],self.noice.shape[0]))
         self.canvas.xview_moveto(self.canvas.xview()[0] * 2)
         self.canvas.yview_moveto(self.canvas.yview()[0] * 2)
-        # self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
     def zoom_out_image(self):
         if self.zoom_factor < 2:
@@ -161,7 +148,7 @@ class App:
         self.point = (y,x)
 
         # 框选出选中的位置
-        range_size = 17
+        range_size = 21
         if self.zoom_factor > 7:
             rh = (y-int(range_size/2)) * self.zoom_factor
             rw = (x-int(range_size/2)) * self.zoom_factor
@@ -173,73 +160,60 @@ class App:
             self.selected_pixel_rect = []
             for i in range(range_size):
                 for j in range(range_size):
-                    self.selected_pixel_rect.append(
-                        self.canvas.create_rectangle(
-                            rw + i*self.zoom_factor, 
-                            rh + j*self.zoom_factor, 
-                            rw + (i+1)*self.zoom_factor-1,
-                            rh + (j+1)*self.zoom_factor-1,
-                            outline='red' if self.bad[y-int(range_size/2)+j,x-int(range_size/2)+i]==255 else 'green', 
-                            width=1
+                    try:
+                        self.selected_pixel_rect.append(
+                            self.canvas.create_rectangle(
+                                rw + i*self.zoom_factor, 
+                                rh + j*self.zoom_factor, 
+                                rw + (i+1)*self.zoom_factor-1,
+                                rh + (j+1)*self.zoom_factor-1,
+                                outline='red' if self.bad[y-int(range_size/2)+j,x-int(range_size/2)+i]==255 else 'green', 
+                                width=1
+                            )
                         )
-                    )
+                    except:
+                        pass
     
     def select_base_directory(self):
         self.base_src = Path(filedialog.askdirectory())
         self.base_src_entry.delete(0)
         self.base_src_entry.insert(0,self.base_src)
-
-    def select_csv_directory(self):
-        self.csv_src_src = Path(filedialog.askopenfilename())
-        self.csv_src_entry.delete(0)
-        self.csv_src_entry.insert(0,self.csv_src)
+        bs.BASE_PATH = self.base_src
     
     def select_proj(self,event):
         [self.proj_id,self.path] = self.proj_conf_comb.get().split(':')
         self.path = Path(self.path)
         assert self.path.exists()
         info = bs.get_proj_info_by_index(self.proj_id)
-        bs.load_20C_imgs(info)
-        bs.load_35C_imgs(info)
-        bs.load_20C_voltages(info)
-        bs.load_35C_voltages(info)
-        bs.load_20C_noice(info)
-        bs.load_35C_noice(info)
-        self.width = info['width']
-        self.height = info['height']
-        self.noice20 = info['noice20']
-        self.noice35 = info['noice35']
-        self.vol20 = info['vol20']
-        self.vol35 = info['vol35']
+        bs.load_low_noice(info)
+        bs.load_high_noice(info)
+        bs.load_high_voltages(info)
+        bs.load_low_voltages(info)
+        self.shape = (info['width'],info['height'])
+        self.noice = info['noice_l']
+        self.noice_35 = info['noice_h']
+        self.voltage = info['vol_l']
+        self.voltage_35 = info['vol_h']
+        self.bad = bs.read_png_to_array(Path(info['path']) / 'BadPixel.png')
+        
         self.photo_image = ImageTk.PhotoImage(to_image(bs.norm(self.noice)))
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_image)
-        self.canvas.config(scrollregion=(0,0,self.width,self.height))
+        self.canvas.config(scrollregion=(0,0,self.noice.shape[1],self.noice.shape[0]))
         self.zoom_factor = 1
 
-        self.bad = bs.read_png_to_array(self.path / 'BadPixel.png')
-        self.average_noice = np.average(self.noice20)
-        self.average_noice_35 = np.average(self.noice35)
-        self.average_image = np.average(self.vol20,axis=0)
-        self.average_image_35 = np.average(self.vol35,axis=0)
+        self.average_noice = np.average(self.noice)
+        self.average_noice_35 = np.average(self.noice_35)
+        self.average_image = np.average(self.voltage,axis=0)
+        self.average_image_35 = np.average(self.voltage_35,axis=0)
         self.label_pre_info.config(text='Chooes Pixcel First')
     
     def init_proj_conf_list(self):
         if self.base_src.exists() == False:
             return []
-        if self.csv_src.exists() == False:
-            return []
         temp = []
-        with open(self.csv_src, 'r') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            next(csv_reader) # Jump Title
-            for row in csv_reader:
-                index = row[0]
-                _path = row[2]
-                path = self.base_src / _path
-                temp.append(f'{index}:{path}')
-                # shape = (int(row[3]),int(row[4]))
-                # num = (int(row[5]),int(row[6]))
+        for _,info in bs.get_all_proj_info().items():
+            temp.append(f'{info["index"]}:{info["path"]}')
         return temp
     
     def draw_wave(self):

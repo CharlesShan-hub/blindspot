@@ -1,6 +1,9 @@
 import numpy as np
+from scipy.optimize import curve_fit
 import csv
 from pathlib import Path
+import matplotlib.pyplot as plt
+from clib.utils import glance
 from .utils import *
 from .detection import *
 
@@ -76,7 +79,7 @@ def load_low_voltages(info):
     '''
     if hasattr(info,'img_l') == False:
         load_low_imgs(info)
-    info['vol_l'] = info['img_l'].astype(np.float32)/65536 * info['scale']
+    info['vol_l'] = info['img_l'].astype(np.float32)/65536 * info['scale'] * 1.01
 
 def load_high_voltages(info):
     '''
@@ -84,7 +87,7 @@ def load_high_voltages(info):
     '''
     if hasattr(info,'img_h') == False:
         load_high_imgs(info)
-    info['vol_h'] = info['img_h'].astype(np.float32)/65536 * info['scale']
+    info['vol_h'] = info['img_h'].astype(np.float32)/65536 * info['scale'] * 1.01
 
 def load_low_noice(info):
     '''
@@ -118,9 +121,9 @@ def pixel_voltage_responsivity(info):
     '''
     if hasattr(info,'vol_response') == False:
         pixel_voltage_response(info)
-    sigma = np.array(5.673,dtype=np.float64) * 10**(-12)
-    temp = info["temp_h"]**4 - info["temp_l"]**4
-    area = np.array(15*10**(-3),dtype=np.float64) ** 2
+    sigma = np.array(5.673e-12,dtype=np.float64)
+    temp = (info["temp_h"]+273.15)**4 - (info["temp_l"]+273.15)**4
+    area = np.array(15e-3,dtype=np.float64) ** 2
     L = 0.006
     D = 0.006
     n = 1 if L/D > 1 else 0
@@ -129,21 +132,90 @@ def pixel_voltage_responsivity(info):
 
 def dead_pixel_threshold(info):
     '''
-        死像元 国标法
+        国标法(死像元)
+        红外焦平面阵列参数测试方法, 国标 GB/T 17444-2013
     '''
     if hasattr(info,'vol_responsivity') == False:
         pixel_voltage_responsivity(info) 
     threshold = 0.1 * np.average(info['vol_responsivity'])
-    info['dead'] = info['vol_response'] > threshold
+    return info['vol_responsivity'] < threshold
 
 def overheated_pixel_threshold(info):
     '''
-        过热像元 国标法
+        国标法(过热像元)
+        红外焦平面阵列参数测试方法, 国标 GB/T 17444-2013
     '''
     if hasattr(info,'noice_l') == False:
         load_low_noice(info) 
     threshold = 10 * np.average(info['noice_l'])
-    info['overheated'] = info['noice_l'] > threshold
+    return info['noice_l'] > threshold
 
-    
+def pixel_three_sigma(info):
+    '''
+        盲元 3sigma
+    '''
+    if hasattr(info,'vol_response') == False:
+        pixel_voltage_response(info)
+    mean = np.mean(info['vol_response'])
+    sigma = np.std(info['vol_response'])
+    return np.abs(info['vol_response']-mean) > 3 * sigma
 
+def curved_surface_fitting(info,times=3):
+    '''
+        盲元 曲面拟合
+        张北伟,曹江涛,丛秋梅. 基于曲面拟合的红外图像盲元检测方法 [J]. 红外技术, 2017, 39  (11): 1007-1011.
+    '''
+    if hasattr(info,'vol_response') == False:
+        pixel_voltage_response(info)
+    def poly_surface(xy, a, b, c, d, e, f):
+        (x,y) = xy
+        return a * x**2 + b * y**2 + c * x * y + d * x + e * y + f
+    image = np.average(info['vol_l'], axis=0)
+    (rows, cols) = image.shape
+    x = np.linspace(0, cols - 1, cols)
+    y = np.linspace(0, rows - 1, rows)
+    X, Y = np.meshgrid(x, y)
+    [X_flat, Y_flat, Z_flat] = [i.flatten() for i in [X,Y,image]]
+    popt, _ = curve_fit(poly_surface, (X_flat, Y_flat), Z_flat)
+    S = poly_surface((X, Y), *popt).reshape(rows, cols)
+    sigma = np.sqrt(np.sum((image.ravel() - S.ravel())**2) / (image.size - 1))
+    return np.abs(image-S) > times * sigma
+
+def morphologic():
+    '''
+        李丽萍,袁祁刚,朱华,等. 一种新的红外焦平面阵列盲元检测算法 [J]. 红外技术, 2014, 36  (02): 106-109.
+    '''
+    pass
+
+def pixel_double_source(info,threshold=0.1):
+    '''
+        双参考源检测法(红外焦平面器件盲元检测及补偿算法 周慧鑫 2004)
+        需要手动设置电压的阈值
+    '''
+    if hasattr(info,'vol_response') == False:
+        pixel_voltage_response(info)
+    info['pixel'] = np.abs(info['vol_response']) > threshold
+
+
+def plot_3d(gray_img, zlim=None):
+    # 提取 x 和 y 轴坐标
+    # 提取 x 和 y 轴坐标
+    x = np.arange(gray_img.shape[1])
+    y = np.arange(gray_img.shape[0])
+    x, y = np.meshgrid(x, y)
+
+    # 创建一个新的图形对象和一个三维轴对象
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # 绘制三维曲面图
+    surf = ax.plot_surface(x, y, gray_img, cmap='viridis')
+
+    # 设置颜色条
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+
+    if zlim is not None:
+        ax.set_zlim(zlim)
+
+    # 显示图形
+    plt.show()
