@@ -53,6 +53,12 @@ def get_proj_info_by_index(index):
                 }
     return False
 
+def delete_info(info):
+    white_list = ['index','width','height','temp_l','temp_h','num_l','num_h','scale','path']
+    black_list = [key for key in info if key not in white_list]
+    for key in black_list:
+        del info[key]
+
 def load_low_imgs(info):
     '''
         低温图片

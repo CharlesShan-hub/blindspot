@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from clib.utils import glance,save_array_to_img
 
-bs.BASE_PATH = '/Users/kimshan/Public/data/mang_yuan2'
+bs.BASE_PATH = '/Users/kimshan/Public/data/blindpoint'
 
 # for _,info in bs.get_all_proj_info().items():
 info = bs.get_proj_info_by_index(4)

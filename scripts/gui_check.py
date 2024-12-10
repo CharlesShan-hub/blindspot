@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from pathlib import Path
-import csv
 import matplotlib.pyplot as plt
 from PIL import Image, ImageTk
 import numpy as np
@@ -15,7 +14,7 @@ WINDOW_HEIGHT = 820
 CONFIG_WIDTH = 10
 TITLE_FONT = ("Arial", 24)
 CONTENT_FONT = ("Arial", 15)
-BASE_SRC_DEFAULT = Path('/Users/kimshan/Public/data/mang_yuan2')
+BASE_SRC_DEFAULT = Path('/Users/kimshan/Public/data/blindpoint')
 # TEMP_IMG = read_txt_to_matrix('/Users/kimshan/Public/data/test/非正式测试结果/Test-Result/2024-03-13-14-10-12-0313/像元噪声均值_V.txt')
 TEMP_IMG = fused
 
@@ -29,7 +28,7 @@ class App:
         self.ui_config()
         self.ui_pixel_choose_widgets()
         self.ui_result_show_widgets()
-        self.proj_conf_comb.current(3)
+        self.proj_conf_comb.current(4)
         self.select_proj(None)
     
     def ui_frames(self):
