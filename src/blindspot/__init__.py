@@ -27,7 +27,8 @@ def get_all_proj_info():
                 'num_l': int(row[5]),
                 'num_h': int(row[6]),
                 'scale': int(row[7]),
-                'path': Path(row[8])
+                'path': Path(row[8]),
+                'active': row[9] == 'True'
             }
     return info
 
@@ -49,12 +50,33 @@ def get_proj_info_by_index(index):
                     'num_l': int(row[5]),
                     'num_h': int(row[6]),
                     'scale': int(row[7]),
-                    'path': Path(row[8])
+                    'path': Path(row[8]),
+                    'active': row[9] == 'True'
                 }
     return False
 
+def change_info(info):
+    """
+        修改某一项的元数据
+    """
+    all_info = get_all_proj_info()
+    with open(Path(BASE_PATH) / 'pathinfo.csv', 'w', newline='') as write_csv_file:
+        csv_writer = csv.writer(write_csv_file)
+        csv_writer.writerow(['index', 'width', 'height', 'temp_l', 'temp_h', 'num_l', 'num_h', 'scale', 'path', 'active'])
+        for _, value in all_info.items():
+            if value['index'] != info['index']:
+                csv_writer.writerow([
+                    value['index'], value['width'], value['height'], value['temp_l'], value['temp_h'], 
+                    value['num_l'], value['num_h'], value['scale'], value['path'], value['active']
+                ])
+            else:
+                csv_writer.writerow([
+                    info['index'], info['width'], info['height'], info['temp_l'], info['temp_h'], 
+                    info['num_l'], info['num_h'], info['scale'], info['path'], info['active']
+                ])
+
 def delete_info(info):
-    white_list = ['index','width','height','temp_l','temp_h','num_l','num_h','scale','path']
+    white_list = ['index','width','height','temp_l','temp_h','num_l','num_h','scale','path','active']
     black_list = [key for key in info if key not in white_list]
     for key in black_list:
         del info[key]
