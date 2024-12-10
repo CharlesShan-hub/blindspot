@@ -1,7 +1,8 @@
 import blindspot as bs
+from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from clib.utils import glance
+from clib.utils import glance,save_array_to_img
 
 bs.BASE_PATH = '/Users/kimshan/Public/data/mang_yuan2'
 
@@ -35,7 +36,9 @@ bad = bs.curved_surface_fitting(info)
 
 # 多参考源 - 定标检测法
 
-img =np.average(info['vol_l'], axis=0)
+# img =np.average(info['vol_l'], axis=0)
+
+save_array_to_img(bs.curved_surface_fitting(info,times=7),Path("./4-7s.png"))
 # np.isnan(img)
 # glance([img,bs.curved_surface_fitting(info,times=6)],title=["Origin","6 Sigma"])
 # glance([img,bs.curved_surface_fitting(info,times=7)],title=["Origin","7 Sigma"])
