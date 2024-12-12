@@ -8,9 +8,8 @@ import numpy as np
 from clib.utils import to_numpy, to_image
 from clib.metrics.fusion import fused
 import blindspot as bs
+import click
 
-WINDOW_WIDTH = 1200
-WINDOW_HEIGHT = 820
 CONFIG_WIDTH = 10
 TITLE_FONT = ("Arial", 24)
 CONTENT_FONT = ("Arial", 15)
@@ -19,11 +18,11 @@ BASE_SRC_DEFAULT = Path('/Users/kimshan/Public/data/blindpoint')
 TEMP_IMG = fused
 
 class App:
-    def __init__(self, root):
+    def __init__(self, root, **kwargs):
         # Setting
         self.root = root
         self.root.title("Charles App")
-        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        self.root.geometry(f"{kwargs['window_width']}x{kwargs['window_height']}")
         self.ui_frames()
         self.ui_config()
         self.ui_pixel_choose_widgets()
@@ -259,10 +258,18 @@ class App:
         hex_value = format(gray_value, '02x')
         # 返回RGB16进制字符串，由于是灰度，所以R、G、B值相同
         return f'#{hex_value}{hex_value}{hex_value}'
+    
 
-# 创建主窗口
-root = tk.Tk()
-# 创建BlindPPixelsSearchApp的实例
-app = App(root)
-# 启动主事件循环
-root.mainloop()
+@click.command()
+@click.option('--window_width', type=int, default=1200)
+@click.option('--window_height', type=int, default=820)
+@click.option('--method', default='curved_surface')
+@click.option('--result', default='/path/to/result/folder')
+def main(**kwargs):
+    root = tk.Tk()
+    app = App(root,**kwargs)
+    root.mainloop()
+    
+
+if __name__ == "__main__":
+    main()

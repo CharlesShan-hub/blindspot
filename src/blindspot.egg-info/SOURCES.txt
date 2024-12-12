@@ -2,7 +2,10 @@ LICENSE
 README.md
 pyproject.toml
 src/blindspot/__init__.py
-src/blindspot/lib.py
+src/blindspot/convert.py
+src/blindspot/detection.py
+src/blindspot/old.py
+src/blindspot/utils.py
 src/blindspot.egg-info/PKG-INFO
 src/blindspot.egg-info/SOURCES.txt
 src/blindspot.egg-info/dependency_links.txt
