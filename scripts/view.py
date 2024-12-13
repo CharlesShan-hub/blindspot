@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from pathlib import Path
-import matplotlib.pyplot as plt
 from PIL import Image, ImageTk
 import numpy as np
 from clib.utils import to_image
@@ -21,6 +20,7 @@ class App:
         self.root.geometry(f"{kwargs['window_width']}x{kwargs['window_height']}")
         self.base_src = bs.BASE_PATH = Path(kwargs['base_src'])
         self.save_dir = Path(kwargs["save_dir"])
+        self.double_temp = kwargs['double_temp']
         self.r = kwargs['r']
         self.ui_frames()
         self.ui_config()
@@ -210,7 +210,7 @@ class App:
             bad = self.bad,                     # 盲元表
             proj_id = self.proj_id,             # 实验 ID
             save_dir = self.save_dir,           # 保存目录
-            double_temp = True,                 # 绘制两个温度曲线
+            double_temp = self.double_temp,     # 绘制两个温度曲线
             vol_l= self.voltage,                # 低温电压
             vol_h= self.voltage_35,             # 高温电压
             vol_l_avg = self.average_image,     # 低温平均电压
@@ -227,11 +227,12 @@ class App:
 @click.option('--base_src', default='/Users/kimshan/Public/data/blindpoint')
 @click.option('--save_dir', default='/Users/kimshan/Public/data/blindpoint/temp')
 @click.option('--r', type=int, default=3)
+@click.option('--double_temp', type=bool, default=True)
 @click.option('--window_width', type=int, default=1200)
 @click.option('--window_height', type=int, default=820)
 def main(**kwargs):
     root = tk.Tk()
-    app = App(root,**kwargs)
+    App(root,**kwargs)
     root.mainloop()
     
 

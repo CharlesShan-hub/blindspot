@@ -3,6 +3,16 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from pathlib import Path
 
+__all__ = [
+    'norm',
+    'fill_nan_with_max',
+    'fill_nan_with_min',
+    'read_txt_to_matrix',
+    'read_png_to_array',
+    'plot_3d',
+    'plot_wave'
+]
+
 # 可以处理含 nan 数据的norm
 def norm(data: np.ndarray) -> np.ndarray:
     _min = np.nanmin(data)
@@ -32,6 +42,21 @@ def float_to_rgb16(value):
     hex_value = format(gray_value, '02x')
     # 返回RGB16进制字符串，由于是灰度，所以R、G、B值相同
     return f'#{hex_value}{hex_value}{hex_value}'
+
+def plot_3d(gray_img, zlim=None):
+    """ 绘制灰度图灰度值的 3D 图
+    """
+    x = np.arange(gray_img.shape[1])
+    y = np.arange(gray_img.shape[0])
+    x, y = np.meshgrid(x, y)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    surf = ax.plot_surface(x, y, gray_img, cmap='viridis')
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    if zlim is not None:
+        ax.set_zlim(zlim)
+    plt.show()
 
 def plot_wave(p: tuple, r: int, bad: np.ndarray, \
               proj_id: int, save_dir: str, double_temp: bool, \
@@ -76,7 +101,6 @@ def plot_wave(p: tuple, r: int, bad: np.ndarray, \
     i2 = i1 + temp.shape[0]
     j1 = r - (p[1] - y1)
     j2 = j1 + temp.shape[1]
-    print(i1,i2,j1,j2)
     color_image[i1:i2, j1:j2] = temp
 
     for i in range(d):
@@ -89,10 +113,7 @@ def plot_wave(p: tuple, r: int, bad: np.ndarray, \
                 color = ['red','darkred']
             else:
                 color = ['green','darkgreen']
-            # try:
             axs[i][j].set_facecolor(float_to_rgb16(color_image[i][j]))
-            # except:
-            #     axs[i][j].set_facecolor('black')
             if double_temp == True:
                 axs[i][j].plot(vol_l[:, q[0], q[1]], color=color[0])
                 axs[i][j].set_ylim(vol_l_avg[q[0],q[1]]-noice_l_avg*9,vol_l_avg[q[0],q[1]]+noice_l_avg*3)
