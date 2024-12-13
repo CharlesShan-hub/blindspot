@@ -5,17 +5,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from PIL import Image, ImageTk
 import numpy as np
-from clib.utils import to_numpy, to_image
-from clib.metrics.fusion import fused
+from clib.utils import to_image
 import blindspot as bs
 import click
 
 CONFIG_WIDTH = 10
 TITLE_FONT = ("Arial", 24)
 CONTENT_FONT = ("Arial", 15)
-BASE_SRC_DEFAULT = Path('/Users/kimshan/Public/data/blindpoint')
-# TEMP_IMG = read_txt_to_matrix('/Users/kimshan/Public/data/test/非正式测试结果/Test-Result/2024-03-13-14-10-12-0313/像元噪声均值_V.txt')
-TEMP_IMG = fused
 
 class App:
     def __init__(self, root, **kwargs):
@@ -23,6 +19,9 @@ class App:
         self.root = root
         self.root.title("Charles App")
         self.root.geometry(f"{kwargs['window_width']}x{kwargs['window_height']}")
+        self.base_src = bs.BASE_PATH = Path(kwargs['base_src'])
+        self.save_dir = Path(kwargs["save_dir"])
+        self.r = kwargs['r']
         self.ui_frames()
         self.ui_config()
         self.ui_pixel_choose_widgets()
@@ -46,8 +45,6 @@ class App:
         self.text_label.pack(side=tk.TOP, fill=tk.X)
 
         # Base Path Config
-        self.base_src = BASE_SRC_DEFAULT
-        bs.BASE_PATH = self.base_src
         self.base_src_frame = tk.Frame(self.top_frame)
         self.base_src_label = tk.Label(self.base_src_frame, width=CONFIG_WIDTH, text='Base Src', font=CONTENT_FONT)
         self.base_src_entry = tk.Entry(self.base_src_frame, font=CONTENT_FONT)
@@ -71,16 +68,12 @@ class App:
     def ui_pixel_choose_widgets(self):
         # Pixel Choose
         self.zoom_factor = 1
-        self.noice = to_numpy(TEMP_IMG)#to_numpy(fused)
-        self.shape = self.noice.shape
 
         self.label_pre_info = tk.Label(self.pic_frame, width=CONFIG_WIDTH, text='Please Choose Pixel', font=CONTENT_FONT)
         self.label_pre_info.pack(side=tk.TOP, fill=tk.X)
 
         self.canvas_scro_frame = tk.Frame(self.pic_frame)
-        self.canvas = tk.Canvas(self.canvas_scro_frame, width=450, height=600, bg='#fff', scrollregion=(0,0,self.shape[1],self.shape[0]))
-        self.photo_image = ImageTk.PhotoImage(to_image(TEMP_IMG))
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_image)
+        self.canvas = tk.Canvas(self.canvas_scro_frame, width=450, height=600, bg='#fff', scrollregion=(0,0,10,10))
         self.scrollY = tk.Scrollbar(self.canvas_scro_frame, command=self.canvas.yview, orient='vertical')
         self.canvas.config(yscrollcommand=self.scrollY.set)
         self.scrollX = tk.Scrollbar(self.pic_frame, command=self.canvas.xview, orient='horizontal')
@@ -104,8 +97,6 @@ class App:
         self.label_res = tk.Label(self.res_frame, width=CONFIG_WIDTH, text='', font=CONTENT_FONT)
         self.label_res.pack(side=tk.TOP,expand=True,fill=tk.X)
         self.canvas_res = tk.Canvas(self.res_frame, width=700, height=650, bg='#fff')
-        self.res_image = ImageTk.PhotoImage(to_image(TEMP_IMG))
-        self.canvas_res.create_image(0, 0, anchor=tk.NW, image=self.res_image)
         self.canvas_res.pack(side=tk.LEFT)
     
     def zoom_in_image(self):
@@ -150,8 +141,6 @@ class App:
         if self.zoom_factor > 7:
             rh = (y-int(range_size/2)) * self.zoom_factor
             rw = (x-int(range_size/2)) * self.zoom_factor
-            # rh2 = rh1 + self.zoom_factor - 1
-            # rw2 = rw1 + self.zoom_factor - 1
             if hasattr(self, 'selected_pixel_rect'):
                 for item in self.selected_pixel_rect:
                     self.canvas.delete(item)
@@ -215,56 +204,31 @@ class App:
         return temp
     
     def draw_wave(self):
-        r=3
-        fig, axs = plt.subplots(2*r+1, 2*r+1, figsize=(49, 49))
-        color_image = self.average_image[max(self.point[0]-r,0):min(self.point[0]+r+1,self.shape[0]), max(self.point[1]-r,0):min(self.point[1]+r+1,self.shape[1])]
-        color_image = (color_image - np.min(color_image)) / (np.max(color_image) - np.min(color_image))
-        for i in range(7):
-            for j in range(7):
-                p = (self.point[0]-r+i, self.point[1]-r+j)
-                if p[0]<0 or p[0]>(self.shape[0]-1) or p[1]<0 or p[1]>(self.shape[1]-1):
-                    continue
-                plt.subplot(7,7,1+7*i+j)
-                if self.bad[p[0], p[1]] == 255:  # 坏点的像素值是255
-                    color = ['red','darkred']
-                else:
-                    color = ['green','darkgreen']
-                try:
-                    axs[i][j].set_facecolor(self.float_to_rgb16(color_image[i][j]))
-                except:
-                    axs[i][j].set_facecolor('black')
-                # axs[i][j].plot(get_wave(self.path / '20C.dat', point), color=color)
-                # axs[i][j].plot([image[p[0],p[1]] for image in self.voltage], color=color)
-                axs[i][j].plot(self.voltage[:, p[0], p[1]], color=color[0])
-                axs[i][j].set_ylim(self.average_image[p[0],p[1]]-self.average_noice*9,self.average_image[p[0],p[1]]+self.average_noice*3)
-                axs[i][j].set_title(f'{p}')
-
-                ax_twin = axs[i][j].twinx()
-                ax_twin.plot(self.voltage_35[:, p[0], p[1]], color=color[1])
-                ax_twin.set_ylim(self.average_image_35[p[0],p[1]]-self.average_noice_35*3,self.average_image_35[p[0],p[1]]+self.average_noice_35*9)
-        fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05)
-        if Path(f'./{self.proj_id}').exists() == False:
-            Path(f'./{self.proj_id}').mkdir()
-        plt.savefig(f"./{self.proj_id}/{self.point[0]}_{self.point[1]}")
-        self.res_image = ImageTk.PhotoImage(Image.open(f"./{self.proj_id}/{self.point[0]}_{self.point[1]}.png").resize((700,650)))
+        bs.plot_wave(
+            p = self.point,                     # 中心点坐标
+            r = self.r,                         # 中心点周围扩展像素个数
+            bad = self.bad,                     # 盲元表
+            proj_id = self.proj_id,             # 实验 ID
+            save_dir = self.save_dir,           # 保存目录
+            double_temp = True,                 # 绘制两个温度曲线
+            vol_l= self.voltage,                # 低温电压
+            vol_h= self.voltage_35,             # 高温电压
+            vol_l_avg = self.average_image,     # 低温平均电压
+            vol_h_avg = self.average_image_35,  # 低温平均电压
+            noice_l_avg = self.average_noice,   # 平均低温噪声
+            noice_h_avg = self.average_noice_35 # 平均低温噪声
+        )
+        self.res_image = ImageTk.PhotoImage(Image.open(self.save_dir / f"{self.proj_id}" / f"{self.point[0]}_{self.point[1]}.png").resize((700,650)))
         self.canvas_res.create_image(0, 0, anchor=tk.NW, image=self.res_image)
         self.label_res.config(text=f'proj: {self.proj_id}, h: {self.point[0]}, w: {self.point[1]}')
-        plt.clf()
-    
-    def float_to_rgb16(self,value):
-        # 将0到1的值映射到0到255的范围
-        gray_value = int(value * 255)
-        # 将灰度值转换为16进制字符串，并确保它是两位数
-        hex_value = format(gray_value, '02x')
-        # 返回RGB16进制字符串，由于是灰度，所以R、G、B值相同
-        return f'#{hex_value}{hex_value}{hex_value}'
     
 
 @click.command()
+@click.option('--base_src', default='/Users/kimshan/Public/data/blindpoint')
+@click.option('--save_dir', default='/Users/kimshan/Public/data/blindpoint/temp')
+@click.option('--r', type=int, default=3)
 @click.option('--window_width', type=int, default=1200)
 @click.option('--window_height', type=int, default=820)
-@click.option('--method', default='curved_surface')
-@click.option('--result', default='/path/to/result/folder')
 def main(**kwargs):
     root = tk.Tk()
     app = App(root,**kwargs)
