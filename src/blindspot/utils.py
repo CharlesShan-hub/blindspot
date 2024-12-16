@@ -9,6 +9,7 @@ __all__ = [
     'fill_nan_with_min',
     'read_txt_to_matrix',
     'read_png_to_array',
+    'curved_surface_fitting',
     'plot_3d',
     'plot_wave'
 ]
@@ -42,6 +43,31 @@ def float_to_rgb16(value):
     hex_value = format(gray_value, '02x')
     # 返回RGB16进制字符串，由于是灰度，所以R、G、B值相同
     return f'#{hex_value}{hex_value}{hex_value}'
+
+def curved_surface_fitting(info):
+    '''
+        盲元 曲面拟合
+        张北伟,曹江涛,丛秋梅. 基于曲面拟合的红外图像盲元检测方法 [J]. 红外技术, 2017, 39  (11): 1007-1011.
+    '''
+    from .base import pixel_voltage_response
+    from scipy.optimize import curve_fit
+
+    if hasattr(info,'vol_response') == False:
+        pixel_voltage_response(info)
+    def poly_surface(xy, a, b, c, d, e, f):
+        (x,y) = xy
+        return a * x**2 + b * y**2 + c * x * y + d * x + e * y + f
+    image = info['vol_response']
+    (rows, cols) = image.shape
+    x = np.linspace(0, cols - 1, cols)
+    y = np.linspace(0, rows - 1, rows)
+    X, Y = np.meshgrid(x, y)
+    [X_flat, Y_flat, Z_flat] = [i.flatten() for i in [X,Y,image]]
+    popt, _ = curve_fit(poly_surface, (X_flat, Y_flat), Z_flat)
+    S = poly_surface((X, Y), *popt).reshape(rows, cols)
+    # sigma = np.sqrt(np.sum((image.ravel() - S.ravel())**2) / (image.size - 1))
+    # return np.abs(image-S) > times * sigma
+    return S
 
 def plot_3d(gray_img, zlim=None):
     """ 绘制灰度图灰度值的 3D 图

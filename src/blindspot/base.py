@@ -4,7 +4,9 @@ import numpy as np
 from .utils import read_png_to_array
 
 __all__ = [
+    # Based on Source
     'get_all_proj_info',
+    'get_all_active_proj_info',
     'get_proj_info_by_index',
     'change_info',
     'delete_info',
@@ -14,8 +16,13 @@ __all__ = [
     'load_high_voltages',
     'load_low_noice',
     'load_high_noice',
+    'load_bad_mask',
     'pixel_voltage_response',
     'pixel_voltage_responsivity',
+
+    # Based on Scene
+    # 'get_all_video_info',
+
 ]
 
 def get_all_proj_info():
@@ -40,6 +47,15 @@ def get_all_proj_info():
                 'path': Path(row[8]),
                 'active': row[9] == 'True'
             }
+    return info
+
+def get_all_active_proj_info():
+    """ 筛选出开启的样本
+    """
+    info = {}
+    for k, v in get_all_proj_info().items():
+        if v['active']:
+            info[k] = v
     return info
 
 def get_proj_info_by_index(index):
@@ -141,12 +157,21 @@ def load_low_noice(info):
 
 def load_high_noice(info):
     '''
-        邓老师让加的,通过高温电压算的噪声
+        通过高温电压算的噪声
     '''
     if hasattr(info,'vol_h') == False:
         load_high_voltages(info)
     info['noice_h'] = np.std(info['vol_h'],axis=0)
 
+def load_bad_mask(info,method:str):
+    '''
+        盲元表
+    '''
+    from . import BASE_PATH
+    path = Path(BASE_PATH) / 'bad' / method
+    assert path.exists()
+    info['bad'] = read_png_to_array(path / f'{info['index']}.png')
+    
 def pixel_voltage_response(info):
     '''
         像元响应电压

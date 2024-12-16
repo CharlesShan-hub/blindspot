@@ -1,20 +1,20 @@
-import blindspot as bs
-from pathlib import Path
-import numpy as np
-import matplotlib.pyplot as plt
-from clib.utils import glance,save_array_to_img
+# import blindspot as bs
+# from pathlib import Path
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from clib.utils import glance,save_array_to_img
 
-bs.BASE_PATH = '/Users/kimshan/Public/data/blindpoint'
+# bs.BASE_PATH = '/Users/kimshan/Public/data/blindpoint'
 
 # for _,info in bs.get_all_proj_info().items():
-info = bs.get_proj_info_by_index(4)
+# info = bs.get_proj_info_by_index(4)
 
 # 单参考源 - 国标法
-bad = bs.dead_pixel_threshold(info)
-bad = bs.overheated_pixel_threshold(info)
+# bad = bs.dead_pixel_threshold(info)
+# bad = bs.overheated_pixel_threshold(info)
 
 # 单参考源 - 曲面拟合法
-bad = bs.curved_surface_fitting(info)
+# bad = bs.curved_surface_fitting(info)
 
 # 单参考源 - 形态学方法
 
@@ -38,7 +38,7 @@ bad = bs.curved_surface_fitting(info)
 
 # img =np.average(info['vol_l'], axis=0)
 
-save_array_to_img(bs.curved_surface_fitting(info,times=7),Path("./4-7s.png"))
+# save_array_to_img(bs.curved_surface_fitting(info,times=7),Path("./4-7s.png"))
 # np.isnan(img)
 # glance([img,bs.curved_surface_fitting(info,times=6)],title=["Origin","6 Sigma"])
 # glance([img,bs.curved_surface_fitting(info,times=7)],title=["Origin","7 Sigma"])

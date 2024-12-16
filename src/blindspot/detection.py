@@ -2,6 +2,14 @@ import numpy as np
 from scipy.optimize import curve_fit
 from .base import *
 
+__all__ = [
+    'dead_pixel_threshold',
+    'overheated_pixel_threshold',
+    'pixel_three_sigma',
+    'dect_curved_surface_fitting',
+    'pixel_double_source'
+]
+
 def dead_pixel_threshold(info):
     '''
         国标法(死像元)
@@ -32,7 +40,7 @@ def pixel_three_sigma(info):
     sigma = np.std(info['vol_response'])
     return np.abs(info['vol_response']-mean) > 3 * sigma
 
-def curved_surface_fitting(info,times=3):
+def dect_curved_surface_fitting(info,times=3):
     '''
         盲元 曲面拟合
         张北伟,曹江涛,丛秋梅. 基于曲面拟合的红外图像盲元检测方法 [J]. 红外技术, 2017, 39  (11): 1007-1011.
@@ -42,7 +50,7 @@ def curved_surface_fitting(info,times=3):
     def poly_surface(xy, a, b, c, d, e, f):
         (x,y) = xy
         return a * x**2 + b * y**2 + c * x * y + d * x + e * y + f
-    image = np.average(info['vol_l'], axis=0)
+    image = info['vol_response']
     (rows, cols) = image.shape
     x = np.linspace(0, cols - 1, cols)
     y = np.linspace(0, rows - 1, rows)
