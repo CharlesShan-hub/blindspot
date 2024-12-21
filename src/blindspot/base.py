@@ -119,6 +119,7 @@ def load_low_imgs(info):
     for i,img_path in enumerate(path.rglob('*')):
         imgs[i] = read_png_to_array(path / img_path)
     info['img_l'] = imgs
+    return info['img_l']
 
 def load_high_imgs(info):
     '''
@@ -130,6 +131,7 @@ def load_high_imgs(info):
     for i,img_path in enumerate(path.rglob('*')):
         imgs[i] = read_png_to_array(path / img_path)
     info['img_h'] = imgs
+    return info['img_h']
 
 def load_low_voltages(info):
     '''
@@ -138,6 +140,7 @@ def load_low_voltages(info):
     if hasattr(info,'img_l') == False:
         load_low_imgs(info)
     info['vol_l'] = info['img_l'].astype(np.float32)/65536 * info['scale'] * 1.01
+    return info['vol_l']
 
 def load_high_voltages(info):
     '''
@@ -146,6 +149,7 @@ def load_high_voltages(info):
     if hasattr(info,'img_h') == False:
         load_high_imgs(info)
     info['vol_h'] = info['img_h'].astype(np.float32)/65536 * info['scale'] * 1.01
+    return info['vol_h']
 
 def load_low_noice(info):
     '''
@@ -154,6 +158,7 @@ def load_low_noice(info):
     if hasattr(info,'vol_l') == False:
         load_low_voltages(info)
     info['noice_l'] = np.std(info['vol_l'],axis=0)
+    return info['noice_l']
 
 def load_high_noice(info):
     '''
@@ -162,15 +167,17 @@ def load_high_noice(info):
     if hasattr(info,'vol_h') == False:
         load_high_voltages(info)
     info['noice_h'] = np.std(info['vol_h'],axis=0)
+    return info['noice_h']
 
-def load_bad_mask(info,method:str):
+def load_bad_mask(info,method:str) -> np.ndarray:
     '''
         盲元表
     '''
     from . import BASE_PATH
     path = Path(BASE_PATH) / 'bad' / method
     assert path.exists()
-    info['bad'] = read_png_to_array(path / f'{info['index']}.png')
+    info['bad'] = read_png_to_array(path / f'{info['index']}.png')/255.0
+    return info['bad']
     
 def pixel_voltage_response(info):
     '''
@@ -181,6 +188,7 @@ def pixel_voltage_response(info):
     if hasattr(info,'vol_l') == False:
         load_low_voltages(info)
     info['vol_response'] = np.average(info['vol_h'], axis=0) - np.average(info['vol_l'], axis=0)
+    return info['vol_response']
 
 def pixel_voltage_responsivity(info):
     '''
@@ -189,10 +197,11 @@ def pixel_voltage_responsivity(info):
     if hasattr(info,'vol_response') == False:
         pixel_voltage_response(info)
     sigma = np.array(5.673e-12,dtype=np.float64)
-    temp = (info["temp_h"]+273.15)**4 - (info["temp_l"]+273.15)**4
-    area = np.array(15e-3,dtype=np.float64) ** 2
-    L = 0.006
-    D = 0.006
+    area = np.array(1.5e-3,dtype=np.float64) ** 2
+    L = np.array(6.0,dtype=np.float64)
+    D = np.array(6.0,dtype=np.float64)
     n = 1 if L/D > 1 else 0
-    p = (sigma * temp * area) / (4 * (L/D)**2 + n)
+    t = (32+info["temp_h"]*1.8)**4 - (32+info["temp_l"]*1.8)**4
+    p = (sigma * t * area) / (4 * (L/D)**2 + n)
     info['vol_responsivity'] = info['vol_response'] / p
+    return info['vol_responsivity']

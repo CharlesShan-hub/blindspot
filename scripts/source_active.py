@@ -5,12 +5,14 @@ from clib.utils import glance
 
 @click.command()
 @click.option('--dataset', default='/Users/kimshan/Public/data/blindpoint')
-def main(dataset):
+@click.option('--only_mark', default=False)
+def main(dataset,only_mark):
     bs.BASE_PATH = dataset
     for index,info in bs.get_all_proj_info().items():
         bs.load_high_voltages(info)
         bs.load_low_voltages(info)
-        glance([np.average(info['vol_l'],axis=0),np.average(info['vol_h'],axis=0)])
+        if only_mark==False:
+            glance([np.average(info['vol_l'],axis=0),np.average(info['vol_h'],axis=0)])
         user_input = input(f"Continue with this {index} data? (y/n): ").strip().lower()
         info['active'] = True if user_input != 'n' else False 
         bs.change_info(info)

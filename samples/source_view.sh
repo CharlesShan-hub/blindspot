@@ -4,9 +4,8 @@
 PYTHON_SCRIPT="../scripts/source_view.py"
 
 python $PYTHON_SCRIPT \
-    --base_src "/Users/kimshan/Public/data/blindpoint/source" \
-    --save_dir "/Users/kimshan/Public/data/blindpoint/source/temp" \
-    --r 3 \
-    --double_temp True \
-    --window_width 1200 \
-    --window_height 820
+    --dataset "/Users/kimshan/Public/data/blindpoint/source" \
+    --index 4 \
+    --method_list "origin|gb|curve3|curve4|curve5" \
+    --need_save False \
+    --save_path "/Users/kimshan/Public/data/blindpoint/tmp"

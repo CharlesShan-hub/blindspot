@@ -3,17 +3,20 @@ import click
 import csv
 from pathlib import Path
 from PIL import Image
+import shutil
 
 @click.command()
-@click.option('--src', default='/Users/kimshan/Public/data/test')
-@click.option('--dest', default='/Users/kimshan/Public/data/blindpoint')
-@click.option('--only_csv', default=False)
-def main(src,dest,only_csv):
+@click.option('--src', default='/Users/kimshan/Public/data/blindpoint/origin')
+@click.option('--dest', default='/Users/kimshan/Public/data/blindpoint/source')
+@click.option('--skip_image', default=False)
+def main(src,dest,skip_image):
     convert.BASE_PATH = Path(src)
     pathinfo_csv_path = Path(dest) / 'pathinfo.csv'
 
     if Path(dest).exists() == False:
         Path(dest).mkdir()
+        (Path(dest)/'bad').mkdir()
+        (Path(dest) / 'bad' / 'origin').mkdir()
     count = 0
     
     # 如果文件存在，读取现有内容
@@ -47,11 +50,15 @@ def main(src,dest,only_csv):
                 (Path(dest) / f'{count}').mkdir()
                 (Path(dest) / f'{count}' / f'{info["temp_l"]}').mkdir()
                 (Path(dest) / f'{count}' / f'{info["temp_h"]}').mkdir()
-            if only_csv == False:
+            
+            if skip_image == False:
                 for i,img in enumerate(info[f'img_l']):
                     Image.fromarray(img).save(str(Path(dest) / f'{count}' / f'{info["temp_l"]}' / f'{i:03d}.png'), format='png')
                 for i,img in enumerate(info[f'img_h']):
                     Image.fromarray(img).save(str(Path(dest) / f'{count}' / f'{info["temp_h"]}' / f'{i:03d}.png'), format='png')
+
+            if (Path(path) / 'BadPixel.png').exists():
+                shutil.copy(Path(path) / 'BadPixel.png', Path(dest) / 'bad' / 'origin' / f'{count}.png')
             
             print(f"{count}: {path}")
 

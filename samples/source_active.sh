@@ -4,7 +4,8 @@
 PYTHON_SCRIPT="../scripts/source_active.py"
 
 python $PYTHON_SCRIPT \
-    --dataset "/Users/kimshan/Public/data/blindpoint/source"
+    --dataset "/Users/kimshan/Public/data/blindpoint/source" \
+    --only_mark True
 
 
 # (Pytorch2) kimshan@MacBook-Pro-2 samples % ./active.sh
