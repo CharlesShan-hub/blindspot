@@ -1,11 +1,10 @@
 #!/bin/bash
 
 # Run Script
-PYTHON_SCRIPT="../scripts/source_active.py"
-
-python $PYTHON_SCRIPT \
-    --dataset "/Users/kimshan/Public/data/blindpoint/source" \
-    --only_mark True
+cd "$(dirname "$0")/.."
+uv run -m scripts.source_active \
+    --dataset "/Volumes/Charles/data/blindpoint/source" \
+    --only_mark False
 
 
 # (Pytorch2) kimshan@MacBook-Pro-2 samples % ./active.sh

@@ -1,2 +1,21 @@
 .vscode
 *.DS_Store
+
+# Virtual environment
+.venv/
+
+# Build artifacts
+dist/
+build/
+
+# Cache directories
+.ruff_cache/
+
+# uv lock file (if choosing to exclude)
+# uv.lock
+
+# Other common Python ignores
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/

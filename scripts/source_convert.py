@@ -1,4 +1,5 @@
 import blindspot.convert as convert
+import blindspot as bs
 import click
 import csv
 from pathlib import Path
@@ -10,7 +11,7 @@ import shutil
 @click.option('--dest', default='/Users/kimshan/Public/data/blindpoint/source')
 @click.option('--skip_image', default=False)
 def main(src,dest,skip_image):
-    convert.BASE_PATH = Path(src)
+    bs.set_base_path(src)
     pathinfo_csv_path = Path(dest) / 'pathinfo.csv'
 
     if Path(dest).exists() == False:

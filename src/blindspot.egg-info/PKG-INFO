@@ -1,7 +1,17 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: blindspot
 Version: 0.0.1
-Summary: blind pixels lib
+Summary: Detect and locate blind pixels in black-body infrared images
 Author-email: Charles <charles.shht@gmail.com>
-Requires-Python: >=3.7
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: click
+Requires-Dist: numpy
+Requires-Dist: matplotlib
+Dynamic: license-file
+
+# blindspot
+
+Detect and locate blind pixels in black-body infrared images
+

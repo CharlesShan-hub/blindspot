@@ -29,7 +29,8 @@ def get_all_proj_info():
     '''
         读取全部项目基础信息(读 CSV 文件)
     '''
-    from . import BASE_PATH
+    from .config import BASE_PATH, check_base_path
+    check_base_path()
     info = {}
     with open(Path(BASE_PATH) / 'pathinfo.csv', 'r') as csv_file:
         csv_reader = csv.reader(csv_file)
@@ -62,7 +63,8 @@ def get_proj_info_by_index(index):
     '''
         根据 proj_id 从 CSV 中筛选项目基本信息
     '''
-    from . import BASE_PATH
+    from .config import BASE_PATH, check_base_path
+    check_base_path()
     with open(Path(BASE_PATH) / 'pathinfo.csv', 'r') as csv_file:
         csv_reader = csv.reader(csv_file)
         next(csv_reader)
@@ -86,7 +88,8 @@ def change_info(info):
     """
         修改某一项的元数据
     """
-    from . import BASE_PATH
+    from .config import BASE_PATH, check_base_path
+    check_base_path()
     all_info = get_all_proj_info()
     with open(Path(BASE_PATH) / 'pathinfo.csv', 'w', newline='') as write_csv_file:
         csv_writer = csv.writer(write_csv_file)
@@ -113,7 +116,8 @@ def load_low_imgs(info):
     '''
         低温图片
     '''
-    from . import BASE_PATH
+    from .config import BASE_PATH, check_base_path
+    check_base_path()
     path = Path(BASE_PATH) / str(info['index']) / f'{info["temp_l"]}'
     imgs = np.zeros((info['num_l'], info['height'], info['width']), dtype=np.float32)
     for i,img_path in enumerate(path.rglob('*')):
@@ -125,7 +129,8 @@ def load_high_imgs(info):
     '''
         高温图片
     '''
-    from . import BASE_PATH
+    from .config import BASE_PATH, check_base_path
+    check_base_path()
     path = Path(BASE_PATH) / str(info['index']) / f'{info["temp_h"]}'
     imgs = np.zeros((info['num_h'], info['height'], info['width']), dtype=np.float32)
     for i,img_path in enumerate(path.rglob('*')):
@@ -173,10 +178,11 @@ def load_bad_mask(info,method:str) -> np.ndarray:
     '''
         盲元表
     '''
-    from . import BASE_PATH
+    from .config import BASE_PATH, check_base_path
+    check_base_path()
     path = Path(BASE_PATH) / 'bad' / method
-    assert path.exists()
-    info['bad'] = read_png_to_array(path / f'{info['index']}.png')/255.0
+    assert path.exists(), f'File not exist: {path}'
+    info['bad'] = read_png_to_array(path / f'{info["index"]}.png')/255.0
     return info['bad']
     
 def pixel_voltage_response(info):

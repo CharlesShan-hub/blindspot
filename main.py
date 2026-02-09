@@ -1,5 +1,5 @@
-# import blindspot as bs
-# from pathlib import Path
+import blindspot as bs
+from pathlib import Path
 # import numpy as np
 # import matplotlib.pyplot as plt
 # from clib.utils import glance,save_array_to_img
@@ -76,3 +76,14 @@
 # # 显示图像
 # plt.show()
 
+
+
+def main():
+    bs.BASE_PATH = '1'
+    bs.config.BASE_PATH = '2'
+    print(bs.BASE_PATH)
+    print(bs.config.BASE_PATH)
+
+
+if __name__ == "__main__":
+    main()

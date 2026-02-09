@@ -1,18 +1,18 @@
 import blindspot as bs
-from clib.utils import glance
+from cslib.utils import glance
 import numpy as np
 import click
 from pathlib import Path
 
 @click.command()
-@click.option('--dataset', default='/Users/kimshan/Public/data/blindpoint')
+@click.option('--dataset', default='/Volumes/Charles/data/blindpoint/source')
 @click.option('--index', default=0)
 @click.option('--method_list', default='default|default2')
 @click.option('--need_save', default=False)
-@click.option('--save_path', default='/Users/kimshan/Public/data/blindpoint')
+@click.option('--save_path', default='/Volumes/Charles/data/blindpoint/source')
 def main(**kwargs):
 
-    bs.BASE_PATH = kwargs['dataset']
+    bs.set_base_path(kwargs['dataset'])
     if kwargs['index'] == 0:
         all_info = bs.get_all_proj_info()
     else:
@@ -26,25 +26,27 @@ def main(**kwargs):
         avg_img_h = np.average(info['img_h'], axis=0)/65536.0 # into range of [0,1]
         avg_img_l = np.average(info['img_l'], axis=0)/65536.0
 
+        num_cols = max(5, len(method_list))
+
         glance(
-            image = [avg_img_h, avg_img_l, np.abs(avg_img_h-avg_img_l), bs.norm(np.abs(info['noice_l'])), avg_img_l] +\
-                [None] * ((len(method_list)-5) if len(method_list) > 5 else 0) +\
+            [avg_img_h, avg_img_l, np.abs(avg_img_h-avg_img_l), bs.norm(np.abs(info['noice_l'])), avg_img_l] +\
+                [None] * (num_cols - 5) +\
                 [bs.load_bad_mask(info,m) for m in method_list] + \
-                [None] * ((5-len(method_list)) if len(method_list) <=5 else 0),
+                [None] * (num_cols - len(method_list)),
             title = [f"{k}-High", f"{k}-Low", "abs(h-l) with auto", "Noice with auto", "3d plot vol_l"] +\
-                [None] * ((len(method_list)-5) if len(method_list) > 5 else 0) +\
+                [None] * (num_cols - 5) +\
                 method_list +\
-                [None] * ((5-len(method_list)) if len(method_list) <= 5 else 0),
+                [None] * (num_cols - len(method_list)),
             auto_contrast = [False, False, True, True, True] +\
-                [None] * ((len(method_list)-5) if len(method_list) > 5 else 0) +\
+                [None] * (num_cols - 5) +\
                 [False] * len(method_list) +\
-                [None] * ((5-len(method_list)) if len(method_list) <= 5 else 0),
+                [None] * (num_cols - len(method_list)),
             plot_3d = [False, False, False, False, True] +\
-                [None] * ((len(method_list)-5) if len(method_list) > 5 else 0) +\
+                [None] * (num_cols - 5) +\
                 [False] * len(method_list) +\
-                [None] * ((5-len(method_list)) if len(method_list) <= 5 else 0),
-            shape = (2,len(method_list) if len(method_list) > 2 else 2),
-            figsize = (20*(len(method_list) if len(method_list) > 2 else 2), 16*2), 
+                [None] * (num_cols - len(method_list)),
+            shape = (2, num_cols),
+            figsize = (6*num_cols, 10), 
             save = kwargs['need_save'],
             save_path = Path(kwargs['save_path']) / f"{k}.png",
         )

@@ -4,10 +4,11 @@ import numpy as np
 from .utils import read_txt_to_matrix
 
 pixel_size = 2
-BASE_PATH = ""
 
 # 输入待转换目录根目录, 返回内部所有的项目文件夹, 可能有失效文件夹
 def get_src_list():
+    from .config import BASE_PATH, check_base_path
+    check_base_path()
     base_path = Path(BASE_PATH)
     assert base_path.is_dir(), f"The provided base_path '{base_path}' is not a directory."
     src_list = [base_path]

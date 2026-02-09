@@ -1,13 +1,13 @@
 import blindspot as bs
 import click
 import numpy as np
-from clib.utils import glance
+from cslib.utils import glance
 
 @click.command()
-@click.option('--dataset', default='/Users/kimshan/Public/data/blindpoint')
+@click.option('--dataset', default='/Volumes/Charles/data/blindpoint/source')
 @click.option('--only_mark', default=False)
 def main(dataset,only_mark):
-    bs.BASE_PATH = dataset
+    bs.set_base_path(dataset)
     for index,info in bs.get_all_proj_info().items():
         bs.load_high_voltages(info)
         bs.load_low_voltages(info)

@@ -1,12 +1,24 @@
+# uv + brew plan in mac not include tkinter
+# `brew install tcl-tk`
+# `brew search python-tk`
+# and I run `brew install python-tk@3.14`
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from pathlib import Path
 from PIL import Image, ImageTk
 import numpy as np
-from clib.utils import to_image
+# need this `uv pip install -e .``
 import blindspot as bs
 import click
+import sys
+# from cslib.utils import to_image
+def to_image(image: np.ndarray) -> Image.Image:
+    image = image * 255.0
+    if len(image.shape) == 2:
+        return Image.fromarray(image.astype(np.uint8), mode="L")
+    else:
+        return Image.fromarray(image.astype(np.uint8), mode="RGB") 
 
 CONFIG_WIDTH = 10
 TITLE_FONT = ("Arial", 24)
@@ -16,6 +28,13 @@ class App:
     def __init__(self, root, **kwargs):
         # Setting
         self.root = root
+        
+        # Check Tcl/Tk patchlevel
+        patchlevel = self.root.tk.call("info", "patchlevel")
+        print(f"Info: Tcl/Tk patchlevel is {patchlevel}")
+        # The SO warning was mainly for Windows, we just log it here
+        
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title("Charles App")
         self.root.geometry(f"{kwargs['window_width']}x{kwargs['window_height']}")
         self.base_src = bs.BASE_PATH = Path(kwargs['base_src'])
@@ -29,6 +48,36 @@ class App:
         self.proj_conf_comb.current(4)
         self.select_proj(None)
     
+    def on_closing(self):
+        self.root.destroy()
+        sys.exit(0)
+    
+    def on_vertical_scroll(self, event):
+        # StackOverflow logic for vertical scroll
+        if sys.platform == 'darwin':
+             print(f"Debug: Vertical Scroll delta={event.delta}")
+             self.canvas.yview_scroll(-1 * event.delta, 'units')
+        elif sys.platform == 'win32':
+             self.canvas.yview_scroll(int(-1 * (event.delta/120)), 'units')
+        elif sys.platform == 'linux':
+             if event.num == 5:
+                 self.canvas.yview_scroll(1, 'units')
+             elif event.num == 4:
+                 self.canvas.yview_scroll(-1, 'units')
+
+    def on_horizontal_scroll(self, event):
+        # StackOverflow logic for horizontal scroll
+        if sys.platform == 'darwin':
+             print(f"Debug: Horizontal Scroll delta={event.delta}")
+             self.canvas.xview_scroll(-1 * event.delta, 'units')
+        elif sys.platform == 'win32':
+             self.canvas.xview_scroll(int(-1 * (event.delta/120)), 'units')
+        elif sys.platform == 'linux':
+             if event.num == 5:
+                 self.canvas.xview_scroll(1, 'units')
+             elif event.num == 4:
+                 self.canvas.xview_scroll(-1, 'units')
+
     def ui_frames(self):
         self.top_frame = tk.Frame(self.root)
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
@@ -74,11 +123,29 @@ class App:
 
         self.canvas_scro_frame = tk.Frame(self.pic_frame)
         self.canvas = tk.Canvas(self.canvas_scro_frame, width=450, height=600, bg='#fff', scrollregion=(0,0,10,10))
+        # Ensure canvas can receive focus for bindings
+        self.canvas.focus_set()
+        self.canvas.bind('<Enter>', lambda _: self.canvas.focus_set())
+        
         self.scrollY = tk.Scrollbar(self.canvas_scro_frame, command=self.canvas.yview, orient='vertical')
-        self.canvas.config(yscrollcommand=self.scrollY.set)
+        self.canvas.config(yscrollcommand=self.scrollY.set, yscrollincrement=1, xscrollincrement=1)
         self.scrollX = tk.Scrollbar(self.pic_frame, command=self.canvas.xview, orient='horizontal')
         self.canvas.config(xscrollcommand=self.scrollX.set)
         self.canvas.bind("<Button-1>", self.select_pixel)
+        
+        # MacOS Touchpad Support (StackOverflow Solution)
+        # https://stackoverflow.com/a/75276628
+        # We use bind_all to ensure events are caught even if focus is not strictly on root/canvas
+        OS = sys.platform
+        if OS in ('win32','darwin'):
+             self.root.bind_all('<MouseWheel>', self.on_vertical_scroll)
+             self.root.bind_all('<Shift-MouseWheel>', self.on_horizontal_scroll)
+        elif OS == 'linux':
+             self.root.bind_all('<Button-4>', self.on_vertical_scroll)
+             self.root.bind_all('<Button-5>', self.on_vertical_scroll)
+             self.root.bind_all('<Shift-Button-4>', self.on_horizontal_scroll)
+             self.root.bind_all('<Shift-Button-5>', self.on_horizontal_scroll)
+
         self.scrollX.pack(side=tk.TOP, fill=tk.X)
         self.canvas_scro_frame.pack(side=tk.TOP)
         self.canvas.pack(side=tk.LEFT)
@@ -170,7 +237,7 @@ class App:
     def select_proj(self,event):
         [self.proj_id,self.path] = self.proj_conf_comb.get().split(':')
         self.path = Path(self.path)
-        assert self.path.exists()
+        assert self.path.exists() == True, f'{self.path} not exists'
         info = bs.get_proj_info_by_index(self.proj_id)
         bs.load_low_noice(info)
         bs.load_high_noice(info)
@@ -224,13 +291,14 @@ class App:
     
 
 @click.command()
-@click.option('--base_src', default='/Users/kimshan/Public/data/blindpoint')
-@click.option('--save_dir', default='/Users/kimshan/Public/data/blindpoint/temp')
+@click.option('--base_src', default='/Volumes/Charles/data/blindpoint/source')
+@click.option('--save_dir', default='/Volumes/Charles/data/blindpoint/tmp')
 @click.option('--r', type=int, default=3)
 @click.option('--double_temp', type=bool, default=True)
 @click.option('--window_width', type=int, default=1200)
 @click.option('--window_height', type=int, default=820)
 def main(**kwargs):
+    bs.set_base_path(kwargs['base_src'])
     root = tk.Tk()
     App(root,**kwargs)
     root.mainloop()
