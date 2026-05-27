@@ -1,5 +1,7 @@
 .vscode
 *.DS_Store
+assets
+
 
 # Virtual environment
 .venv/

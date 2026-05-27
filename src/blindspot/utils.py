@@ -82,7 +82,8 @@ def plot_wave(p: tuple, r: int, bad: np.ndarray, \
               proj_id: int, save_dir: str, double_temp: bool, \
               vol_l: np.ndarray, vol_h: np.ndarray, \
               vol_l_avg: np.ndarray = None,vol_h_avg: np.ndarray = None, \
-              noice_l_avg: np.ndarray = None,noice_h_avg: np.ndarray = None):
+              noice_l_avg: np.ndarray = None,noice_h_avg: np.ndarray = None, \
+              show_axis: bool = True, absolute_y: bool = False):
     """ 根据电压和盲元表绘制电压曲线
 
     Args:
@@ -96,6 +97,8 @@ def plot_wave(p: tuple, r: int, bad: np.ndarray, \
         vol_h (np.ndarray): 高温电压
         vol_l_avg (np.ndarray): 低温平均电压
         vol_h_avg (np.ndarray): 高温平均电压
+        show_axis (bool): 是否显示坐标轴
+        absolute_y (bool): 是否使用绝对坐标轴（不根据噪声调整范围）
     """
     
     s = bad.shape
@@ -123,10 +126,24 @@ def plot_wave(p: tuple, r: int, bad: np.ndarray, \
     j2 = j1 + temp.shape[1]
     color_image[i1:i2, j1:j2] = temp
 
+    # Calculate unified Y-axis limits if absolute_y is True
+    ylim_l = None
+    ylim_h = None
+    if absolute_y:
+        # Extract the relevant window of data to compute global min/max for this view
+        # We use the same coordinate range as color_image logic above
+        vol_l_window = vol_l[:, x1:x2, y1:y2]
+        ylim_l = (np.nanmin(vol_l_window), np.nanmax(vol_l_window))
+        
+        if double_temp:
+            vol_h_window = vol_h[:, x1:x2, y1:y2]
+            ylim_h = (np.nanmin(vol_h_window), np.nanmax(vol_h_window))
+
     for i in range(d):
         for j in range(d):
             q = (p[0]-r+i, p[1]-r+j)
             if q[0]<0 or q[0]>(s[0]-1) or q[1]<0 or q[1]>(s[1]-1):
+                axs[i][j].axis('off')
                 continue
             plt.subplot(d,d,1+d*i+j)
             if bad[q[0], q[1]] == 255:  # 坏点的像素值是255
@@ -134,17 +151,66 @@ def plot_wave(p: tuple, r: int, bad: np.ndarray, \
             else:
                 color = ['green','darkgreen']
             axs[i][j].set_facecolor(float_to_rgb16(color_image[i][j]))
+            
+            if not show_axis:
+                axs[i][j].set_xticks([])
+                axs[i][j].set_yticks([])
+            else:
+                axs[i][j].tick_params(axis='both', which='major', labelsize=20)
+                # keeping frame might be good to see individual plots, but user said "coordinate axis gone".
+                # axis('off') removes background color too! But we set facecolor above.
+                # If we use axis('off'), facecolor might be lost or become transparent.
+                # Let's check matplotlib behavior. axis('off') turns off lines and labels.
+                # If facecolor is important (it represents voltage?), we should keep it.
+                # axs[i][j].set_facecolor(...) sets the background of the axes.
+                # If axis('off') is called, the patch is not drawn?
+                # Actually, set_axis_off() makes it invisible.
+                # Maybe just remove ticks?
+                # "坐标轴了" -> likely "remove axes".
+                # Let's try removing ticks and spines? Or just ticks.
+                # For now I will just remove ticks.
+                
             if double_temp == True:
                 axs[i][j].plot(vol_l[:, q[0], q[1]], color=color[0])
-                axs[i][j].set_ylim(vol_l_avg[q[0],q[1]]-noice_l_avg*9,vol_l_avg[q[0],q[1]]+noice_l_avg*3)
+                if not absolute_y:
+                    axs[i][j].set_ylim(vol_l_avg[q[0],q[1]]-noice_l_avg*9,vol_l_avg[q[0],q[1]]+noice_l_avg*3)
+                else:
+                    axs[i][j].set_ylim(ylim_l)
+                
                 ax_twin = axs[i][j].twinx()
                 ax_twin.plot(vol_h[:, q[0], q[1]], color=color[1])
-                ax_twin.set_ylim(vol_h_avg[q[0],q[1]]-noice_h_avg*3,vol_h_avg[q[0],q[1]]+noice_h_avg*9)
+                if not absolute_y:
+                    ax_twin.set_ylim(vol_h_avg[q[0],q[1]]-noice_h_avg*3,vol_h_avg[q[0],q[1]]+noice_h_avg*9)
+                else:
+                    ax_twin.set_ylim(ylim_h)
+                
+                if not show_axis:
+                    ax_twin.set_xticks([])
+                    ax_twin.set_yticks([])
+                    ax_twin.spines['top'].set_visible(False)
+                    ax_twin.spines['right'].set_visible(False)
+                    ax_twin.spines['bottom'].set_visible(False)
+                    ax_twin.spines['left'].set_visible(False)
+                else:
+                    ax_twin.tick_params(axis='both', which='major', labelsize=20)
             else:
                 axs[i][j].plot(vol_l[:, q[0], q[1]], color=color[0])
-                axs[i][j].set_ylim(vol_l_avg[q[0],q[1]]-noice_l_avg*3,vol_l_avg[q[0],q[1]]+noice_l_avg*3)
-            axs[i][j].set_title(f'{q}')
-    fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05)
+                if not absolute_y:
+                    axs[i][j].set_ylim(vol_l_avg[q[0],q[1]]-noice_l_avg*3,vol_l_avg[q[0],q[1]]+noice_l_avg*3)
+                else:
+                    axs[i][j].set_ylim(ylim_l)
+            
+            if not show_axis:
+                axs[i][j].spines['top'].set_visible(False)
+                axs[i][j].spines['right'].set_visible(False)
+                axs[i][j].spines['bottom'].set_visible(False)
+                axs[i][j].spines['left'].set_visible(False)
+            
+            axs[i][j].set_title(f'{q}', fontsize=60)
+    if show_axis:
+        fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0.5, hspace=0.5)
+    else:
+        fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0.2, hspace=0.2)
 
     if (Path(save_dir) / f'{proj_id}').exists() == False:
         (Path(save_dir) / f'{proj_id}').mkdir()

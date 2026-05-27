@@ -1,11 +1,12 @@
 import sys
+import shutil
 from pathlib import Path
 import numpy as np
 import blindspot as bs
 import click
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QLabel, QLineEdit, QPushButton, 
-                               QComboBox, QGraphicsView, QGraphicsScene, 
+                               QComboBox, QCheckBox, QGraphicsView, QGraphicsScene, 
                                QGraphicsPixmapItem, QFrame, QSplitter, QFileDialog, 
                                QGraphicsRectItem, QGraphicsItem, QStyleOptionGraphicsItem)
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QWheelEvent, QAction
@@ -232,6 +233,9 @@ class MainWindow(QMainWindow):
         # Initialize Project List
         self.refresh_proj_list()
 
+        # Set focus to image view by default
+        self.image_view.setFocus()
+
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts"""
         if event.key() == Qt.Key_I:
@@ -240,6 +244,8 @@ class MainWindow(QMainWindow):
             self.image_view.scale(0.8, 0.8)
         elif event.key() == Qt.Key_P:
             self.toggle_overlay()
+        elif event.key() == Qt.Key_M:
+            self.image_mode_cb.toggle()
         elif self.current_proj_info is not None:
             # Navigation keys
             step = 1
@@ -304,9 +310,134 @@ class MainWindow(QMainWindow):
         top_layout.addWidget(QLabel("Project:"))
         self.proj_combo = QComboBox()
         self.proj_combo.currentIndexChanged.connect(self.load_project)
-        top_layout.addWidget(self.proj_combo, stretch=2) # Give more space to project combo
+        self.proj_combo.setMinimumWidth(200) # Ensure it's not too small
+        top_layout.addWidget(self.proj_combo, stretch=1) 
+
+        # Active Checkbox
+        self.active_checkbox = QCheckBox("Active")
+        self.active_checkbox.toggled.connect(self.on_active_toggled)
+        top_layout.addWidget(self.active_checkbox)
+
+        # Window Size Selection
+        top_layout.addWidget(QLabel("Window Size:"))
+        self.size_combo = QComboBox()
+        self.size_combo.addItems(["3x3", "5x5", "7x7"])
+        
+        # Set initial index based on kwargs['r']
+        initial_r = self.kwargs.get('r', 2)
+        if initial_r == 1:
+            self.size_combo.setCurrentIndex(0)
+        else:
+            self.size_combo.setCurrentIndex(1) # Default to 5x5 (r=2)
+            # Force r=2 if it was something else (e.g. 3) to match the UI
+            if initial_r != 2:
+                self.kwargs['r'] = 2
+            
+        self.size_combo.currentIndexChanged.connect(self.on_window_size_changed)
+        top_layout.addWidget(self.size_combo)
+
+        # Show Axes Checkbox
+        self.show_axis_cb = QCheckBox("Show Axes")
+        self.show_axis_cb.setChecked(True) # Default ON
+        self.show_axis_cb.toggled.connect(self.on_show_axis_toggled)
+        top_layout.addWidget(self.show_axis_cb)
+
+        # Absolute Y-Axis Checkbox
+        self.absolute_y_cb = QCheckBox("Absolute Y")
+        self.absolute_y_cb.setChecked(False) # Default OFF (Relative)
+        self.absolute_y_cb.toggled.connect(self.on_absolute_y_toggled)
+        top_layout.addWidget(self.absolute_y_cb)
+
+        # Image Mode Checkbox (Variance/Mean)
+        self.image_mode_cb = QCheckBox("Show Mean") # Default unchecked = Show Variance
+        self.image_mode_cb.toggled.connect(self.on_image_mode_toggled)
+        top_layout.addWidget(self.image_mode_cb)
+
+        # Save Button
+        self.save_btn = QPushButton("Save")
+        self.save_btn.clicked.connect(self.save_current_plot)
+        top_layout.addWidget(self.save_btn)
 
         parent_layout.addWidget(top_panel, 0) # stretch=0 to prevent vertical expansion
+
+    def on_show_axis_toggled(self, checked):
+        if self.current_proj_info:
+             self.on_pixel_selected(self.selected_y, self.selected_x)
+
+    def on_absolute_y_toggled(self, checked):
+        if self.current_proj_info:
+             self.on_pixel_selected(self.selected_y, self.selected_x)
+
+    def on_image_mode_toggled(self, checked):
+        if not self.current_proj_info:
+            return
+            
+        # Preserve current view state (zoom and scroll)
+        current_transform = self.image_view.transform()
+        h_bar = self.image_view.horizontalScrollBar()
+        v_bar = self.image_view.verticalScrollBar()
+        h_val = h_bar.value()
+        v_val = v_bar.value()
+            
+        # checked = True -> Show Mean (Voltage)
+        # checked = False -> Show Variance (Noise)
+        if checked:
+            qimg = to_qimage(bs.norm(self.average_image))
+            self.image_mode_cb.setText("Show Variance") # Label indicates next action or current state? Let's keep it "Show Mean"
+        else:
+            qimg = to_qimage(bs.norm(self.noice))
+            self.image_mode_cb.setText("Show Mean")
+            
+        self.image_view.set_image(qimg)
+        
+        # Restore view state
+        self.image_view.setTransform(current_transform)
+        h_bar.setValue(h_val)
+        v_bar.setValue(v_val)
+        
+        # Re-add overlay if needed
+        self.overlay_item = GlobalOverlayItem(self.bad)
+        if self.show_overlay:
+            self.image_view.scene.addItem(self.overlay_item)
+            self.overlay_item.setVisible(True)
+        else:
+            self.overlay_item.setVisible(False)
+            
+        # Re-draw selection
+        self.image_view.draw_selection(self.selected_y, self.selected_x, self.bad)
+
+    def on_window_size_changed(self, index):
+        if index == 0:
+            self.kwargs['r'] = 1
+        elif index == 1:
+            self.kwargs['r'] = 2
+        elif index == 2:
+            self.kwargs['r'] = 3
+        
+        if self.current_proj_info:
+            self.on_pixel_selected(self.selected_y, self.selected_x)
+
+    def save_current_plot(self):
+        if not self.current_proj_info:
+            return
+        
+        # Source file (last generated plot)
+        src_path = Path(self.kwargs['save_dir']) / f"{self.current_proj_info['index']}" / f"{self.selected_y}_{self.selected_x}.png"
+        if not src_path.exists():
+            return
+
+        # Default save dir
+        default_dir = Path("/Users/charles/workspace/library/blindspot/assets")
+        if not default_dir.exists():
+            default_dir.mkdir(parents=True, exist_ok=True)
+            
+        # Default filename
+        default_filename = f"{self.current_proj_info['index']}_{self.selected_y}_{self.selected_x}.png"
+        
+        save_path, _ = QFileDialog.getSaveFileName(self, "Save Plot", str(default_dir / default_filename), "Images (*.png)")
+        
+        if save_path:
+            shutil.copy2(src_path, save_path)
 
     def refresh_proj_list(self):
         self.proj_combo.clear()
@@ -315,15 +446,47 @@ class MainWindow(QMainWindow):
         
         proj_infos = bs.get_all_proj_info()
         for _, info in proj_infos.items():
-            self.proj_combo.addItem(f"{info['index']}:{info['path']}", info)
+            active_mark = "[ON] " if info.get('active', True) else "[OFF]"
+            self.proj_combo.addItem(f"{active_mark} {info['index']}:{info['path']}", info)
         
         if self.proj_combo.count() > 4:
             self.proj_combo.setCurrentIndex(4) # Default as per original code
 
+    def on_active_toggled(self, checked):
+        if self.current_proj_info:
+            self.current_proj_info['active'] = checked
+            bs.change_info(self.current_proj_info)
+            print(f"Project {self.current_proj_info['index']} active set to {checked}")
+            
+            # Update list item text dynamically
+            idx = self.proj_combo.currentIndex()
+            if idx >= 0:
+                active_mark = "[ON] " if checked else "[OFF]"
+                new_text = f"{active_mark} {self.current_proj_info['index']}:{self.current_proj_info['path']}"
+                self.proj_combo.setItemText(idx, new_text)
+                self.proj_combo.setItemData(idx, self.current_proj_info)
+
     def load_project(self, index):
         if index < 0: return
         data = self.proj_combo.currentData()
+        
+        # Reload latest info from disk to get fresh 'active' status
+        fresh_data = bs.get_proj_info_by_index(data['index'])
+        if fresh_data:
+            data = fresh_data
+            # Update the combobox data to keep it in sync
+            self.proj_combo.setItemData(index, data)
+            # Update item text to match fresh data (in case changed externally)
+            active_mark = "[ON] " if data.get('active', True) else "[OFF]"
+            new_text = f"{active_mark} {data['index']}:{data['path']}"
+            self.proj_combo.setItemText(index, new_text)
+            
         self.current_proj_info = data
+        
+        # Update Active Checkbox without triggering signal
+        self.active_checkbox.blockSignals(True)
+        self.active_checkbox.setChecked(data.get('active', True))
+        self.active_checkbox.blockSignals(False)
         
         # Load data using blindspot library
         bs.load_low_noice(data)
@@ -387,7 +550,9 @@ class MainWindow(QMainWindow):
             vol_l_avg = self.average_image,
             vol_h_avg = self.average_image_35,
             noice_l_avg = self.average_noice,
-            noice_h_avg = self.average_noice_35
+            noice_h_avg = self.average_noice_35,
+            show_axis = self.show_axis_cb.isChecked(),
+            absolute_y = self.absolute_y_cb.isChecked()
         )
         
         # Load and display result image
@@ -402,7 +567,7 @@ class MainWindow(QMainWindow):
 @click.command()
 @click.option('--base_src', default='/Volumes/Charles/data/blindpoint/source')
 @click.option('--save_dir', default='/Volumes/Charles/data/blindpoint/tmp')
-@click.option('--r', type=int, default=3)
+@click.option('--r', type=int, default=2)
 @click.option('--double_temp', type=bool, default=True)
 @click.option('--window_width', type=int, default=1200)
 @click.option('--window_height', type=int, default=820)
