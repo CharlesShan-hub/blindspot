@@ -1,5 +1,5 @@
 import blindspot as bs
-from cslib.utils import glance
+from blindspot import glance
 import numpy as np
 import click
 from pathlib import Path

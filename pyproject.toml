@@ -9,8 +9,7 @@ dependencies = [
     'click',
     'numpy',
     'matplotlib',
-    'cslib',
-    'PySide6',
+    'Pillow',
 ]
 
 [build-system]

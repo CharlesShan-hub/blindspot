@@ -1,7 +1,7 @@
 import blindspot as bs
 import click
 import numpy as np
-from cslib.utils import glance
+from blindspot import glance
 
 @click.command()
 @click.option('--dataset', default='/Volumes/Charles/data/blindpoint/source')

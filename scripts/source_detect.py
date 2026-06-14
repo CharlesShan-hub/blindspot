@@ -2,7 +2,7 @@ import blindspot as bs
 import click
 from pathlib import Path
 import numpy as np
-from cslib.utils import glance,save_array_to_img
+from blindspot import glance, save_array_to_img
 
 @click.command()
 @click.option('--dataset', default='/Users/kimshan/Public/data/blindpoint')
